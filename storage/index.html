@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distributed Motion Control Panel</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Distributed Motion System <span class="badge">Master</span></h1>
+            <div class="net-status">
+                <span>WebSocket Link: </span>
+                <span id="ws-state" class="status-offline">DISCONNECTED</span>
+            </div>
+        </header>
+
+        <main class="dashboard">
+            <!-- КАРТОЧКА ШАГОВОГО МОТОРА -->
+            <section class="card">
+                <h2>STEPPER CONTROLLER</h2>
+                <div class="telemetry-rows">
+                    <p>State: <span id="step-state" class="accent">UNKNOWN</span></p>
+                    <p>Position(mm): <span id="step-pos">0</span></p>
+                    <p>Target(mm): <span id="step-tgt">0</span></p>
+                    <p>Error: <span id="step-err" class="status-ok">NONE</span></p>
+                </div>
+                <div class="control-actions">
+                    <label>Target position (0..200mm):</label>
+                    <input type="number" id="step-input" min="0" max="200" value="100">
+                    <div class="btn-group">
+                        <button onclick="sendMove('stepper', 'goto')">GOTO</button>
+                        <button onclick="sendCmd('stepper', 'home')">HOME</button>
+                        <button onclick="sendCmd('stepper', 'stop')" class="btn-danger">STOP</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- КАРТОЧКА УМНОГО АКТУАТОРА -->
+            <section class="card">
+                <h2>SMART ACTUATOR</h2>
+                <div class="telemetry-rows">
+                    <p>State: <span id="act-state" class="accent">UNKNOWN</span></p>
+                    <p>Position: <span id="act-pos">0</span> %</p>
+                    <p>Target: <span id="act-tgt">0</span> %</p>
+                </div>
+                <div class="control-actions">
+                    <label>Set position presets:</label>
+                    <div class="preset-grid">
+                        <button onclick="sendActuatorPreset(0)">0%</button>
+                        <button onclick="sendActuatorPreset(25)">25%</button>
+                        <button onclick="sendActuatorPreset(50)">50%</button>
+                        <button onclick="sendActuatorPreset(75)">75%</button>
+                        <button onclick="sendActuatorPreset(100)">100%</button>
+                    </div>
+                    <button onclick="sendCmd('actuator', 'stop')" class="btn-danger w-full">STOP</button>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="/app.js"></script>
+</body>
+</html>
