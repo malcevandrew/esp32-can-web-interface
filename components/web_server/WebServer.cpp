@@ -8,17 +8,18 @@
 #include <sys/unistd.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <vector>            // Подключаем вектор для сборки массива точек
 
-
-
-static const char *TAG = "web_server";
+static const char *TAG = "web_server";      // Для CMakeList.txt
 #define FILE_BUFFER_SIZE 1024
 
 WebServer& WebServer::getInstance() {
+    static DeviceManager& manager = DeviceManager::getInstance(); // Гарантируем линк менеджера 
     static WebServer instance;
     return instance;
 }
 
+// Поднятие LittleFS
 void WebServer::initLittleFS() {
     ESP_LOGI(TAG, "Mounting VFS Flash partition...");
 
@@ -43,6 +44,7 @@ void WebServer::initLittleFS() {
     ESP_LOGI(TAG, "Partition mounted successfully at /storage");
 }
 
+// Запуск HTTP-сервера на порту 80
 void WebServer::start() {
     initLittleFS();
 
@@ -59,6 +61,7 @@ void WebServer::start() {
     }
 }
 
+// Регистрация маршрутов
 void WebServer::registerRoutes() {
     httpd_uri_t index_uri;
     memset(&index_uri, 0, sizeof(httpd_uri_t));
@@ -92,8 +95,7 @@ void WebServer::registerRoutes() {
     httpd_register_uri_handler(_server_handle, &ws_uri);
 }
 
-
-
+// Обработчик данных полученых по WebSocket(связь между кнопками в браузере и логикой на ЕСП32)
 esp_err_t WebServer::wsHandler(httpd_req_t *req) {
     if (req->method == HTTP_GET) {
         ESP_LOGI(TAG, "New WebSocket client handshake successful.");
@@ -109,21 +111,62 @@ esp_err_t WebServer::wsHandler(httpd_req_t *req) {
     if (ret != ESP_OK) return ret;
 
     if (ws_pkt.len > 0) {
+        // Защитный лимит на размер пакета, чтобы исключить переполнение памяти
+        if (ws_pkt.len > 512) {
+            ESP_LOGE(TAG, "Rejected: WebSocket packet too large (%d bytes)", ws_pkt.len);
+            return ESP_FAIL;
+        }
+
         buf = (uint8_t*)calloc(1, ws_pkt.len + 1);
         ws_pkt.payload = buf;
         
-        ret = httpd_ws_recv_frame(req, &ws_pkt, ws_pkt.len);
+        ret = httpd_ws_recv_frame(req, &ws_pkt, ws_pkt.len);  //Ловит сырые радиоволны Wi-Fi и собирает из них текстовую строчку, которую прислал браузер
+        
         if (ret != ESP_OK) { free(buf); return ret; }
 
-        cJSON *json = cJSON_Parse((char*)ws_pkt.payload);
+        cJSON *json = cJSON_Parse((char*)ws_pkt.payload);   // Берёт эту строчку и превращает её в структурированное дерево (JSON-объект)
         if (json != nullptr) {
-            cJSON *device = cJSON_GetObjectItem(json, "device");
-            cJSON *command = cJSON_GetObjectItem(json, "command");
-            cJSON *pos = cJSON_GetObjectItem(json, "position");
 
-            if (cJSON_IsString(device) && cJSON_IsString(command)) {
-                int32_t val = cJSON_IsNumber(pos) ? pos->valueint : 0;
-                DeviceManager::getInstance().executeCommand(device->valuestring, command->valuestring, val);
+            cJSON *command = cJSON_GetObjectItem(json, "command");
+
+            if (cJSON_IsString(command)) {
+
+                std::string cmd_str = command->valuestring;
+                // Сценарий 1: Ловим массив точек программы перемещений (нажата кнопка "start_program")
+                if (cmd_str == "start_program") {
+
+                    cJSON *points_array = cJSON_GetObjectItem(json, "points");
+                    if (points_array && cJSON_IsArray(points_array)) {
+
+                        std::vector<int32_t> program_points;
+                        int array_size = cJSON_GetArraySize(points_array);
+                        
+                        //  пересыпаем цифры полученные из браузера с JSON в массив Си++
+                        for (int i = 0; i < array_size; i++) {
+                            cJSON *point = cJSON_GetArrayItem(points_array, i);
+                            if (cJSON_IsNumber(point)) {
+                                program_points.push_back(point->valueint);
+                            }
+                        }
+                        // Отдаем массив точек Координатору автоматики во FreeRTOS 
+                        DeviceManager::getInstance().startProgramSequence(program_points);
+                    }
+                }
+                // Сценарий 2: Ловим команду принудительной остановки всей программы 
+                else if (cmd_str == "stop_program") {
+                    DeviceManager::getInstance().stopProgramSequence();
+                    DeviceManager::getInstance().executeCommand("stepper", "stop", 0); // Аппаратно тормозим МК 
+                }
+                // Сценарий 3: Ручное классическое пошаговое управление (GOTO / HOME / STOP) 
+                else {
+                    cJSON *device = cJSON_GetObjectItem(json, "device");
+                    cJSON *pos = cJSON_GetObjectItem(json, "position");
+
+                    if (cJSON_IsString(device)) {
+                        int32_t val = cJSON_IsNumber(pos) ? pos->valueint : 0;
+                        DeviceManager::getInstance().executeCommand(device->valuestring, cmd_str, val);
+                    }
+                }
             }
             cJSON_Delete(json);
         }
@@ -132,11 +175,12 @@ esp_err_t WebServer::wsHandler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+// Рассылает телеметрию в браузер пользователя
 void WebServer::broadcastWsMessage(const std::string& message) {
     if (_server_handle == nullptr) return;
 
     size_t max_clients = 7;
-    int client_fds[7] = {0}; // Явно задаем фиксированный размер массива
+    int client_fds[7] = {0}; 
 
     if (httpd_get_client_list(_server_handle, &max_clients, client_fds) == ESP_OK) {
         for (size_t i = 0; i < max_clients; i++) {
@@ -150,15 +194,13 @@ void WebServer::broadcastWsMessage(const std::string& message) {
                 packet.payload = (uint8_t*)message.c_str();
                 packet.len = message.length();
 
-                // ИСПРАВЛЕНИЕ v6.1: Используем актуальное API для асинхронной отправки кадра
                 httpd_ws_send_frame_async(_server_handle, client_fds[i], &packet);
             }
         }
     }
 }
 
-
-
+// Чтение файлов .html, .css, .js с флеш-памяти и отправка их чанками
 esp_err_t WebServer::sendFile(httpd_req_t *req, const char* filepath, const char* mime_type) {
     FILE* file = fopen(filepath, "r");
     if (file == nullptr) {

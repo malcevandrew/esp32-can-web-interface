@@ -10,8 +10,7 @@ public:
     WiFiManager(const WiFiManager&) = delete;
     WiFiManager& operator=(const WiFiManager&) = delete;
 
-    // Точка доступа к единственному экземпляру класса
-    static WiFiManager& getInstance();
+    static WiFiManager& getInstance();  // Функция доступа к единственному экземпляру класса
 
     // Инициализация и запуск подключения
     void init(const char* ssid, const char* password);
@@ -24,8 +23,7 @@ private:
     ~WiFiManager() = default;
 
     // Статический Си-коллбек, который требует ESP-IDF Event Loop
-    static void eventHandler(void* arg, esp_event_base_t event_base, 
-                             int32_t event_id, void* event_data);
+    static void eventHandler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 
     const char* _ssid = nullptr;
     const char* _password = nullptr;

@@ -27,34 +27,26 @@
                     <p>Error: <span id="step-err" class="status-ok">NONE</span></p>
                 </div>
                 <div class="control-actions">
-                    <label>Target position (0..200mm):</label>
-                    <input type="number" id="step-input" min="0" max="200" value="100">
+                    <label>Target position (0..170mm):</label>
+                    <input type="number" id="step-input" min="0" max="170" value="100">
                     <div class="btn-group">
-                        <button onclick="sendMove('stepper', 'goto')">GOTO</button>
-                        <button onclick="sendCmd('stepper', 'home')">HOME</button>
+                        <button id="btn-goto" onclick="sendMove('stepper', 'goto')">GOTO</button>
+                        <button id="btn-home" onclick="sendCmd('stepper', 'home')">HOME</button>
                         <button onclick="sendCmd('stepper', 'stop')" class="btn-danger">STOP</button>
                     </div>
-                </div>
-            </section>
 
-            <!-- КАРТОЧКА УМНОГО АКТУАТОРА -->
-            <section class="card">
-                <h2>SMART ACTUATOR</h2>
-                <div class="telemetry-rows">
-                    <p>State: <span id="act-state" class="accent">UNKNOWN</span></p>
-                    <p>Position: <span id="act-pos">0</span> %</p>
-                    <p>Target: <span id="act-tgt">0</span> %</p>
-                </div>
-                <div class="control-actions">
-                    <label>Set position presets:</label>
-                    <div class="preset-grid">
-                        <button onclick="sendActuatorPreset(0)">0%</button>
-                        <button onclick="sendActuatorPreset(25)">25%</button>
-                        <button onclick="sendActuatorPreset(50)">50%</button>
-                        <button onclick="sendActuatorPreset(75)">75%</button>
-                        <button onclick="sendActuatorPreset(100)">100%</button>
+                    <!-- НОВЫЙ БЛОК: СЕРИЙНАЯ ПРОГРАММА ПЕРЕМЕЩЕНИЙ -->
+                    <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
+                        <label style="font-weight: bold;">Sequence:</label>
+                        <input type="text" id="prog-input" value="20, 60, 15, 120" style="margin-bottom: 10px; width: 260px; font-size: 14pt;">
+                        <div class="btn-group">
+                            <button id="btn-start-prog" onclick="startAutomatedProgram()" style="background-color: #28a745; color: white;">START SEQUENCE</button>
+                            <button id="btn-stop-prog" onclick="stopAutomatedProgram()" class="btn-danger">STOP SEQUENCE</button>
+                        </div>
+                        <div id="prog-status-block" style="margin-top: 10px; font-size: 13px; color: #555; display: none; background: #f8f9fa; padding: 8px; border-radius: 4px; text-align: center;">
+                            Execution: step <span id="prog-current-step" style="font-weight: bold; color: #007bff;">0</span> of <span id="prog-total-steps" style="font-weight: bold;">0</span>
+                        </div>
                     </div>
-                    <button onclick="sendCmd('actuator', 'stop')" class="btn-danger w-full">STOP</button>
                 </div>
             </section>
         </main>

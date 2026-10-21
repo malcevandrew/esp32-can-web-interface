@@ -21,6 +21,7 @@ void WiFiManager::init(const char* ssid, const char* password) {
     
     // 2. Создание дефолтного системного Event Loop, если он еще не создан
     esp_err_t err = esp_event_loop_create_default();
+    
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
         ESP_ERROR_CHECK(err);
     }
@@ -58,14 +59,13 @@ void WiFiManager::init(const char* ssid, const char* password) {
     ESP_LOGI(TAG, "Wi-Fi subsystem started. Awaiting event loop responses.");
 }
 
-bool WiFiManager::isConnected() const {
+bool WiFiManager::isConnected() const { // const гарантирует, что этот метод является read-only
     return _isConnected;
 }
 
-void WiFiManager::eventHandler(void* arg, esp_event_base_t event_base, 
-                               int32_t event_id, void* event_data) 
+void WiFiManager::eventHandler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) 
 {
-    // Восстанавливаем указатель на экземпляр класса из аргумента коллбека
+    // Восстанавливаем безликий указатель на экземпляр класса из аргумента коллбека
     WiFiManager* manager = static_cast<WiFiManager*>(arg);
 
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
@@ -73,7 +73,9 @@ void WiFiManager::eventHandler(void* arg, esp_event_base_t event_base,
         esp_wifi_connect();
     } 
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        
         manager->_isConnected = false;
+
         if (manager->_retry_cnt < WIFI_MAXIMUM_RETRY) {
             esp_wifi_connect();
             manager->_retry_cnt++;
@@ -83,6 +85,7 @@ void WiFiManager::eventHandler(void* arg, esp_event_base_t event_base,
         }
     } 
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         manager->_isConnected = true;
         manager->_retry_cnt = 0;

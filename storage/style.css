@@ -31,7 +31,7 @@ h1 { margin: 0; font-size: 1.5rem; font-weight: 600; }
 .log-time { color: var(--text-muted); }
 .accent { color: var(--accent); }
 
-.dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.dashboard { display: flex; justify-content: center; }
 .telemetry-rows p { margin: 8px 0; border-bottom: 1px dashed #334155; padding-bottom: 4px; }
 .control-actions { margin-top: 20px; display: flex; flex-direction: column; }
 input[type="number"] { background: #020617; border: 1px solid var(--border-color); color: #fff; padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 1rem; }
