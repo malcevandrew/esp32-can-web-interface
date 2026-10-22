@@ -6,11 +6,13 @@
 
 class WiFiManager {
 public:
-    // Удаляем конструкторы копирования и присваивания (запрещаем дублирование синглтона)
+
+    // Удаляем конструкторы копирования и присваивания (запрещаем дублирование)
     WiFiManager(const WiFiManager&) = delete;
     WiFiManager& operator=(const WiFiManager&) = delete;
 
-    static WiFiManager& getInstance();  // Функция доступа к единственному экземпляру класса
+    // Функция доступа к единственному экземпляру класса WiFiManager
+    static WiFiManager& getInstance();  
 
     // Инициализация и запуск подключения
     void init(const char* ssid, const char* password);

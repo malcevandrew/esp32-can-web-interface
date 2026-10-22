@@ -5,11 +5,13 @@
 static const char *TAG = "wifi_mgr";
 #define WIFI_MAXIMUM_RETRY  5
 
+// Функция доступа к единственному экземпляру класса WiFiManager
 WiFiManager& WiFiManager::getInstance() {
     static WiFiManager instance;
     return instance;
 }
 
+// 
 void WiFiManager::init(const char* ssid, const char* password) {
     _ssid = ssid;
     _password = password;

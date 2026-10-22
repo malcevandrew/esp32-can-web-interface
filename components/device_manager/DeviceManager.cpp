@@ -6,7 +6,7 @@
 
 static const char *TAG = "device_manager";
 
-// гарантирует, что будет существовать только один экземпляр класса
+// Обращение к единственному экземпляру класса DeviceManager
 DeviceManager& DeviceManager::getInstance() {
     static DeviceManager instance;
     return instance;
@@ -15,7 +15,7 @@ DeviceManager& DeviceManager::getInstance() {
 // Инициализируем менеджер подключеных устройств (создаем виртуальные узлы)
 void DeviceManager::init() {
 
-    // Передаем указатель на функцию-обработчик 
+    // Передаем указатель на функцию-обработчик принятого кадра CAN
     CanMaster::getInstance().registerExtendedCallback(DeviceManager::handleIncomingCanFrame);       
 
     // Инициализация наших узлов начальными значениями state = "UNHOMED" и position = 0
@@ -71,11 +71,11 @@ void DeviceManager::startProgramSequence(const std::vector<int32_t>& points) {
     
     ESP_LOGW(TAG, "=== SEQUENCE STARTED: %d points loaded ===", points.size());
     
-    executeNextProgramStep();   // Запускаем выполнение последовательности
+    executeNextProgramStep();   // Переходим к выполнению последовательности
 }
 
 
-// При команде "Stop" или при сбое больше не ждем флаг об успешном завершении отправленной команды
+// При команде "Stop" или в случае сбоя больше не ждем ответ "DONE"
 void DeviceManager::stopProgramSequence() {
     _is_program_running = false;
     _waiting_for_done = false;
@@ -83,7 +83,7 @@ void DeviceManager::stopProgramSequence() {
 }
 
 
-// Переключатель шагов
+// Переключатель шагов в режиме "Последовательность"
 void DeviceManager::executeNextProgramStep() {
     if (!_is_program_running) return;
 
@@ -105,7 +105,7 @@ void DeviceManager::executeNextProgramStep() {
     ESP_LOGW(TAG, "[AUTO CYCLE] Step %d/%d ➔ Sending GOTO %d mm", 
              _current_program_index + 1, _program_points.size(), next_target_mm);
 
-    // Отправляем по CAN и фиксируем выданный токен транзакции
+    // Отправляем по CAN и получаем токен транзакции
     _active_transaction_token = CanMaster::getInstance().sendNodeCommand(1, 0x02, next_target_mm);
     
     if (_active_transaction_token > 0) {
@@ -146,20 +146,20 @@ void DeviceManager::handleIncomingCanFrame(uint8_t node_id, uint8_t cmd_id, uint
         if (state == 0x04 || state == 0x03) { 
             ESP_LOGE(TAG, "[HOT REBOOT / FAULT DETECTED] Stepper lost its home or went to fault status!");
 
-            manager.stopProgramSequence();                                                      // Аварийно гасим конвейер
+            manager.stopProgramSequence();                                                      // Больше не ждем ответ "DONE"
             WebServer::getInstance().broadcastWsMessage(manager.getSystemTelemetryJson());      // Обновляем показатели на веб-интерфейсе
             return;
         }
     }
 
-    // //////////////////////////////////////////
+    // Проверка статуса ответа транзации
     if (manager._is_program_running && node_id == 1 && manager._waiting_for_done) {
         if (cmd_id == manager._active_transaction_token) {                              // Если номер токена команды и ответа совпадают
             if (tx_status == 0xFF) {                                                    // Если NACK (отказ STM32 в выполнения команды)
                 ESP_LOGE(TAG, "[CAN NACK] Execution rejected by STM32!");
                 manager.stopProgramSequence();
             }
-            else if (tx_status == 0x55) {           // Пришел DONE
+            else if (tx_status == 0x55) {           // Если пришел DONE
                 manager._waiting_for_done = false;  // Снимаем блокировку транзакции
                 manager._current_program_index++;   // Инкрементируем индекс
                 
@@ -190,7 +190,7 @@ void DeviceManager::linkSupervisorTask(void* pvParameters) {
                 
                 manager._devices["stepper"].state = "LINK_ERROR";
                 if (manager._is_program_running) {                                              
-                    manager.stopProgramSequence();                                              // /////////////////////
+                    manager.stopProgramSequence();                                              // Больше не ждем ответ "DONE"
                 }
                 WebServer::getInstance().broadcastWsMessage(manager.getSystemTelemetryJson());  // Обновляем показатели на веб-интерфейсе   
             }
@@ -214,7 +214,7 @@ void DeviceManager::linkSupervisorTask(void* pvParameters) {
                 ESP_LOGE(TAG, "[TOKEN DESYNC CRITICAL] Transaction token mismatch timeout! Active token: %d", manager._active_transaction_token);
                 
                 manager._devices["stepper"].state = "TRANSACTION_DESYNC";
-                manager.stopProgramSequence();                                                  // Гасим автомат очереди
+                manager.stopProgramSequence();                                                  // Больше не ждем ответ "DONE"
                 
                 WebServer::getInstance().broadcastWsMessage(manager.getSystemTelemetryJson());  // Обновляем показатели на веб-интерфейсе
             }

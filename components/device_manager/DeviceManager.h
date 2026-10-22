@@ -20,7 +20,7 @@ public:
     DeviceManager(const DeviceManager&) = delete;               
     DeviceManager& operator=(const DeviceManager&) = delete;
 
-    // Гарантирует, что будет существовать только один экземпляр класса
+    // Обращение к единственному экземпляру класса DeviceManager
     static DeviceManager& getInstance();
     
     // Инициализируем менеджер подключеных устройств (создаем виртуальные узлы)
@@ -32,7 +32,7 @@ public:
     // Метод загрузки и запуска автоматической программы перемещений из веб-интерфейса
     void startProgramSequence(const std::vector<int32_t>& points);
 
-    // ////////////////////////////////////////////////////
+    // При команде "Stop" или в случае сбоя больше не ждем флаг об успешном завершении отправленной команды 
     void stopProgramSequence();
     
     // Переключатель шагов

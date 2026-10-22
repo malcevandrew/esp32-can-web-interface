@@ -10,7 +10,7 @@
 
 static const char *TAG = "main_app";
 
-const char* MY_SSID = "wifi_login";     //логин и пароль wi-fi сети
+const char* MY_SSID = "wifi_ssid";     //логин и пароль wi-fi сети
 const char* MY_PASS = "wifi_password";
 
 extern "C" void app_main(void) {

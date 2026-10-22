@@ -7,7 +7,7 @@
 
 static const char* TAG = "can_master";
 
-// Гарантирует, что будет существовать только один экземпляр класса
+// Обращение к единственному экземпляру класса CanMaster
 CanMaster& CanMaster::getInstance() {
     static CanMaster instance;
     return instance;
