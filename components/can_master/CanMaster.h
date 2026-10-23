@@ -21,6 +21,8 @@ public:
     // Новые транзакционные методы управления узлами шины
     uint8_t sendNodeCommand(uint8_t node_id, uint8_t cmd_code, int32_t target_mm);
     
+    // Для межмодульного взаимодействия.
+    // В DeviceManager.срр мы назначаем функцию DeviceManager::handleIncomingCanFrame() обработчиком входящих по CAN кадров
     void registerExtendedCallback(CanExtendedCallback cb);
     void triggerExtendedCallback(uint8_t node_id, uint8_t cmd_id, uint8_t tx_status, uint8_t state, int32_t pos);
 

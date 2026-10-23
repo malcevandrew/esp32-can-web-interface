@@ -17,9 +17,9 @@ extern "C" void app_main(void) {
     
     // Шаблон инициализации энергонезависимой памяти (NVS) во флеш-памяти ESP32
     esp_err_t ret = nvs_flash_init();    
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) { // гарантирует, что при любых программных сбоях памяти 
-        ESP_ERROR_CHECK(nvs_flash_erase());                                         // контроллер сам очистит себя 
-        ret = nvs_flash_init();                                                     // и запустится в стабильном рабочем состоянии.
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) { // При любых программных сбоях памяти 
+        ESP_ERROR_CHECK(nvs_flash_erase());                                         // контроллер сам очистит 
+        ret = nvs_flash_init();                                                     // и запустится в стабильном рабочем состоянии
     }
     ESP_ERROR_CHECK(ret);
 
